@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os.path, subprocess
+import os.path, subprocess, re
 
-from ..mesonlib import EnvironmentException
+from ..mesonlib import EnvironmentException, Popen_safe
 from ..mesonlib import is_windows
 
 from .compilers import Compiler, mono_buildtype_args
@@ -49,6 +49,9 @@ class CsCompiler(Compiler):
 
     def get_link_args(self, fname):
         return ['-r:' + fname]
+
+    def get_runtime_assembly_arg(self, asm):
+        return []
 
     def get_soname_args(self, *args):
         return []
@@ -107,7 +110,12 @@ class CsCompiler(Compiler):
     def get_pch_name(self, header_name):
         return ''
 
+    def sanity_fixtures(self, workdir, environment):
+        pass
+
     def sanity_check(self, work_dir, environment):
+        self.sanity_fixtures(work_dir, environment)
+
         src = 'sanity.cs'
         obj = 'sanity.exe'
         source_name = os.path.join(work_dir, src)
@@ -162,3 +170,86 @@ class VisualStudioCsCompiler(CsCompiler):
                 tmp.append(flag)
             res = tmp
         return res
+
+class DotNetCsCompiler(CsCompiler):
+    def __init__(self, exelist, version):
+        super().__init__(exelist, version, 'dotnet', 'dotnet')
+        try:
+            p, out, err = Popen_safe([self.runner, '--list-runtimes'])
+        except OSError as e:
+            raise EnvironmentException('Runner for dotnet doesn\'t include runtime information')
+        lines = out.split('\n')
+        for line in lines:
+            # Skip stuff like Asp
+            if not 'NETCore.App' in line:
+                continue
+            dir_regex = '[^\[]+\[(.*?)\]'
+            dir_match = re.search(dir_regex, line)
+            if dir_match:
+                self.runtime_path = dir_match.group(1)
+            else:
+                raise EnvironmentException('Runner for dotnet doesn\'t include runtime path')
+            version_regex = '[^ ]+[ ](\d+\.\d+\.\d+)'
+            version_match = re.search(version_regex, line)
+            if version_match:
+                self.runtime_version = version_match.group(1)
+            else:
+                raise EnvironmentException('Runner for dotnet doesn\'t include runtime version')
+            name_regex = '^([\w\.]+) '
+            name_match = re.search(name_regex, line)
+            if name_match:
+                self.runtime_name = name_match.group(1)
+            else:
+                raise EnvironmentException('Runner for dotnet doesn\'t include runtime name')
+            break
+        else:
+            raise EnvironmentException('Runner for dotnet doesn\'t include suitable runtime.')
+
+        try:
+            p, out, err = Popen_safe([self.runner, '--list-sdks'])
+        except OSError as e:
+            raise EnvironmentException('Runner for dotnet doesn\'t include sdk information')
+        dir_regex = '[^\[]+\[(.*?)\]'
+        dir_match = re.search(dir_regex, out)
+        if dir_match:
+            self.sdks_path = dir_match.group(1)
+        else:
+            raise EnvironmentException('Runner for dotnet doesn\'t include sdk path')
+        version_regex = '(\d+\.\d+\.\d+)'
+        version_match = re.search(version_regex, out)
+        if version_match:
+            self.sdk_version = version_match.group(1)
+        else:
+            raise EnvironmentException('Runner for dotnet doesn\'t include sdk version')
+
+        self.csc_path = os.path.join(self.sdks_path, self.sdk_version, 'Roslyn', 'bincore', 'csc.dll')
+        self.dll_path = os.path.join(self.runtime_path, self.runtime_version)
+
+    def get_runtime_assembly_arg(self, asm):
+        return ['-r:' + os.path.join(self.dll_path, asm) + '.dll']
+
+    def get_always_args(self):
+        return [
+                self.csc_path,
+                '-nologo',
+                '-r:{}'.format(os.path.join(self.dll_path, 'System.Private.CoreLib.dll')),
+                ]
+
+    def sanity_fixtures(self, work_dir, environment):
+        path = os.path.join(work_dir, 'sanity.runtimeconfig.json')
+        with open(path, 'w') as ofile:
+            ofile.write('''{{
+  "runtimeOptions": {{
+    "tfm": "netcoreapp2.0",
+    "framework": {{
+      "name": "{}",
+      "version": "{}"
+    }},
+    "configProperties": {{
+      "System.GC.Server": true
+    }}
+  }}
+}}'''.format(self.runtime_name, self.runtime_version))
+
+    def get_optimization_args(self, optimization_level):
+        return []

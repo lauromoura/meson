@@ -917,6 +917,9 @@ int dummy;
                 generated_rel_srcs.append(os.path.normpath(rel_src))
             deps.append(os.path.normpath(rel_src))
 
+        for runtime_assembly in target.runtime_assemblies:
+            commands += compiler.get_runtime_assembly_arg(runtime_assembly)
+
         for dep in target.get_external_deps():
             commands.extend_direct(dep.get_link_args())
         commands += self.build.get_project_args(compiler, target.subproject, target.is_cross)
@@ -1506,14 +1509,16 @@ int dummy;
     def generate_cs_compile_rule(self, compiler, outfile):
         rule = 'rule %s_COMPILER\n' % compiler.get_language()
         invoc = ' '.join([ninja_quote(i) for i in compiler.get_exelist()])
+        always_args = ' '.join([ninja_quote(i) for i in compiler.get_always_args()])
 
         if mesonlib.is_windows():
-            command = ''' command = {executable}  @$out.rsp
+            command = ''' command = {executable} {always_args} @$out.rsp
  rspfile = $out.rsp
  rspfile_content =  $ARGS  $in
-'''.format(executable=invoc)
+'''.format(executable=invoc, always_args=always_args)
         else:
-            command = ' command = %s $ARGS $in\n' % invoc
+            command = ' command = {executable} {always_args} $ARGS $in\n'.format(executable=invoc,
+                    always_args=always_args)
 
         description = ' description = Compiling C Sharp target $out.\n'
         outfile.write(rule)

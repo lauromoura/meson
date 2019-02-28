@@ -147,7 +147,11 @@ from .cpp import (
     CcrxCPPCompiler,
     VisualStudioCPPCompiler,
 )
-from .cs import MonoCompiler, VisualStudioCsCompiler
+from .cs import (
+    MonoCompiler,
+    VisualStudioCsCompiler,
+    DotNetCsCompiler
+)
 from .d import (
     DCompiler,
     DmdDCompiler,

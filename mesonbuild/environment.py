@@ -66,6 +66,7 @@ from .compilers import (
     MonoCompiler,
     CudaCompiler,
     VisualStudioCsCompiler,
+    DotNetCsCompiler,
     NAGFortranCompiler,
     Open64FortranCompiler,
     PathScaleFortranCompiler,
@@ -430,7 +431,7 @@ class Environment:
         if mesonlib.is_windows():
             self.default_cs = ['csc', 'mcs']
         else:
-            self.default_cs = ['mcs', 'csc']
+            self.default_cs = ['mcs', 'csc', 'dotnet']
         self.default_objc = ['cc']
         self.default_objcpp = ['c++']
         self.default_d = ['ldc2', 'ldc', 'gdc', 'dmd']
@@ -951,6 +952,8 @@ class Environment:
                 return MonoCompiler(comp, version)
             elif "Visual C#" in out:
                 return VisualStudioCsCompiler(comp, version)
+            elif "dotnet" in comp[0]:
+                return DotNetCsCompiler(comp, version)
 
         self._handle_exceptions(popen_exceptions, compilers)
 
