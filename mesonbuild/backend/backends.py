@@ -717,6 +717,8 @@ class Backend:
             exe = t.get_exe()
             if isinstance(exe, dependencies.ExternalProgram):
                 cmd = exe.get_command()
+            elif isinstance(exe, build.Executable) and exe.runner:
+                cmd = exe.runner
             else:
                 cmd = [os.path.join(self.environment.get_build_dir(), self.get_target_filename(t.get_exe()))]
             is_cross = self.environment.is_cross_build() and \
@@ -740,6 +742,10 @@ class Backend:
             else:
                 extra_paths = []
             cmd_args = []
+
+            if isinstance(exe, build.Executable) and exe.runner:
+                cmd_args.append(os.path.join(self.environment.get_build_dir(), self.get_target_filename(t.get_exe())))
+
             for a in t.cmd_args:
                 if hasattr(a, 'held_object'):
                     a = a.held_object

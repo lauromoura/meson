@@ -1410,6 +1410,13 @@ class Executable(BuildTarget):
             self.filename += '.' + self.suffix
         self.outputs = [self.filename]
 
+        for comp in self.compilers.values():
+            if comp.get_runner():
+                self.runner = comp.get_runner()
+                break
+        else:
+            self.runner = None
+
         # The import library this target will generate
         self.import_filename = None
         # The import library that Visual Studio would generate (and accept)

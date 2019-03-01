@@ -946,6 +946,13 @@ class Compiler:
     def get_always_args(self):
         return []
 
+    def get_runner(self):
+        """
+        Returns the executable to run programs compiled with this compiler
+        (i.e. dotnet for dotnet core)
+        """
+        return []
+
     def can_linker_accept_rsp(self):
         """
         Determines whether the linker can accept arguments using the @rsp syntax.

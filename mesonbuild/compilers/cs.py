@@ -253,3 +253,6 @@ class DotNetCsCompiler(CsCompiler):
 
     def get_optimization_args(self, optimization_level):
         return []
+
+    def get_runner(self):
+        return [self.runner]

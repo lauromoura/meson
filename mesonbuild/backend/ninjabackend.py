@@ -660,6 +660,8 @@ int dummy;
                               'Please check the command and/or add it to PATH.'
                         raise MesonException(msg.format(exe_wrap.name, target.name))
                     cmd += exe_wrap.get_command()
+            if texe.runner:
+                cmd.append(texe.runner)
             cmd.append(abs_exe)
         elif isinstance(texe, dependencies.ExternalProgram):
             cmd += texe.get_command()
