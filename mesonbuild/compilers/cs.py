@@ -232,6 +232,7 @@ class DotNetCsCompiler(CsCompiler):
         return [
                 self.csc_path,
                 '-nologo',
+                '-lib:{}'.format(self.dll_path),
                 '-r:{}'.format(os.path.join(self.dll_path, 'System.Private.CoreLib.dll')),
                 ]
 
